@@ -72,6 +72,9 @@ for entity in result['results']['bindings']:
         place_Description = entity['placeDescription']['value']
     else:
         place_Description = "no Description"
+        
+    elevation = float(entity['elev']['value'])
+    location = entity['location']['value']
     
     coordssplit = location.split(" ")
     lon = coordssplit[0][6:]
