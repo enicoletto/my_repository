@@ -38,10 +38,11 @@ HMap.remove_layers_by_name(["OpenStreetMap", "ne_50m_admin_0_countries", "locati
 osm = HMap.get_osm_layer()
 HMap.add_layer(osm)
 
-geopackagePath = folder + "natural_earth_vector.gpkg"
 countriesName = "ne_50m_admin_0_countries"
 
 countriesLayer = HVectorLayer.open(geopackagePath, countriesName)
+HMap.add_layer(countriesLayer)
+countriesLayer.subset_filter("ADMIN='Italy'")
 
 #create a geopackage based on the result, both the georaphic and alphanumeric part
 
@@ -67,6 +68,11 @@ for entity in result['results']['bindings']:
     elevation = float(entity['elev']['value'])
     location = entity['location']['value']
     
+    if 'placeDescription' in entity:
+        place_Description = entity['placeDescription']['value']
+    else:
+        place_Description = "no Description"
+    
     coordssplit = location.split(" ")
     lon = coordssplit[0][6:]
     lon = float(lon)
@@ -76,23 +82,13 @@ for entity in result['results']['bindings']:
     
     POINT = HPoint(lon, lat)
     Point = crsHelper.transform(POINT)
-    
+
     if elevation > 10:
         entitiesLayer.add_feature(Point, [place, place_Label, elevation])
     
 crsHelper = HCrs()
 crsHelper.from_srid(4326)#open street map data (latlong)
 crsHelper.to_srid(3857)#reference system for webmapping adapted to the all word
-
-# path = folder + "locations.gpkg"
-# hopenotError = entityslayer.dump_to_gpkg(path, overwrite = True)
-# if hopenotError:
-#     print(hopenotError)
-
-# # place_Description = location['placeDescription']['value']
-
-# geopackagePath = folder + "locations.gpkg"
-# Points_Italy = "locations"
 
 # Countries border style
 
@@ -123,3 +119,52 @@ entitiesLayer.set_style(styles1)
 
 HMap.add_layer(entitiesLayer)
 HMap.add_layer(countriesLayer)
+
+# create PDF layout
+
+printer = HPrinter(iface)
+
+mapProperties = {
+    "x": 5,
+    "y": 25,
+    "width": 285,
+    "height": 180,
+    "extent": [1230000, 4300000, 1310644, 6000000], 
+    "frame": True
+}
+
+printer.add_map(**mapProperties)
+
+labelProperties = {
+    "x": 7,
+    "y": 10,
+    "text": "Group 1: Final map of places in Italy above 10m elevation based on query result",
+    "font_size": 21,
+    "bold": True,
+    "italic": False
+}
+printer.add_label(**labelProperties)
+
+legendProperties = {
+    "x" : 215,
+    "y" : 30,
+    "width" : 150,
+    "height" : 100,
+    "max_symbol_size": 3
+}
+
+printer.add_legend(**legendProperties)
+
+scalebarProperties = {
+    "x": 10,
+    "y": 190,
+    "units": "km",
+    "segments": 4,
+    "unit_per_segment": 100,
+    "style": "Single Box",
+    "font_size": 12
+}
+printer.add_scalebar(**scalebarProperties)
+
+outputpdf = f"{folder}/group1_exam_finalmap.pdf"
+printer.dump_to_pdf(outputpdf)
