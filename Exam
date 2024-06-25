@@ -43,8 +43,9 @@ HMap.add_layer(osm)
 countriesName = "ne_50m_admin_0_countries"
 countriesLayer = HVectorLayer.open(geopackagePath, countriesName)
 HMap.add_layer(countriesLayer)
-countriesLayer.subset_filter("ADMIN='Italy'")
-#create a geopackage based on the result, both the georaphic and alphanumeric part
+countriesLayer.subset_filter("ADMIN = 'Italy' or ADMIN = 'Spain' or ADMIN = 'France'")
+
+# the result, both the georaphic and alphanumeric part
 
 crsHelper = HCrs()
 crsHelper.from_srid(4326)
@@ -56,7 +57,8 @@ fields = {
     "place": "String",
     "place_Label": "String",
     "elevation": "Integer",
-    "place_Description": "String"
+    "place_Description": "String",
+    "village": "Integer"
 }
 
 #location not because this is saved as the point
@@ -85,8 +87,13 @@ for entity in result['results']['bindings']:
     POINT = HPoint(lon, lat)
     Point = crsHelper.transform(POINT)
     
-    if elevation > 10:
-        entitiesLayer.add_feature(Point, [place, place_Label, elevation, place_Description,])
+    if place_Description =='Italian comune' or place_Description == 'frazione of Italy' or place_Description == 'human settlement in Italy':
+        village = 100
+    else:
+        village = 0
+    
+    if elevation < 10:
+        entitiesLayer.add_feature(Point, [place, place_Label, elevation, place_Description, village])
     
 crsHelper = HCrs()
 crsHelper.from_srid(4326)#open street map data (latlong)
@@ -103,13 +110,20 @@ countriesLayer.set_style(styles)
 
 # Locations style
 
-styles1 = HMarker("point", 3) + HStroke("purple", 1) + HFill("purple")
+ranges = [
+    [0, 0],
+    [100, 100],
+]  
+styles = [
+    HMarker("point", 3) + HStroke("blue", 2) + HFill("blue"),
+    HMarker("point", 3) + HStroke("red", 2) + HFill("red"),
+]
 
 labelProperties = {
     "font": "Arial",
     "color": "black",
-    "size": 8,
-    "field": 'place_Label',
+    "size": 18,
+    "field": "if(elevation > 1, concat (place_Label,'-', elevation,'-'),place_Label)",
     "xoffset": 0,
     "yoffset": -4,
     "along_line": True,
@@ -117,9 +131,9 @@ labelProperties = {
     "italic": False
 }
 
-styles1 += HLabel(**labelProperties) + HHalo("white", 1)
+labelStyle = HLabel(**labelProperties) + HHalo("white", 1)
 
-entitiesLayer.set_style(styles1)
+entitiesLayer.set_graduated_style("village", ranges, styles, labelStyle)
 
 # Add layers to the map
 
@@ -134,7 +148,8 @@ mapProperties = {
     "y": 25,
     "width": 285,
     "height": 180,
-    "extent": [1230000, 4300000, 1310644, 6000000], 
+    # "extent": [1230000, 4300000, 1310644, 6000000], 
+    "extent": countriesLayer.bbox(),
     "frame": True
 }
 printer.add_map(**mapProperties)
